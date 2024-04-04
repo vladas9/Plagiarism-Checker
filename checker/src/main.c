@@ -12,6 +12,29 @@ typedef struct Buff {
   ulong len;
 } Buff;
 
+typedef struct {
+  Buff **buffs;
+  float **dists;
+  uint num;
+} BuffDB;
+
+BuffDB *makeDB(uint num, Buff **buffs) {
+  BuffDB *db = malloc(sizeof(BuffDB));
+  db->num = num;
+  db->buffs = buffs;
+  db->dists = malloc(sizeof(float *) * num);
+
+  for (int i = 0; i < num; i++) {
+    db->dists[i] = malloc(sizeof(float) * num);
+    for (int j = 0; j < num; j++) {
+      // TODO compute distances and place in DB. only do Upper half by diagonal,
+      // then copy downwords.
+    }
+  }
+
+  return db;
+}
+
 Buff *makeBuff(char *input) {
   Buff *buff = malloc(sizeof(Buff));
   buff->len = strlen(input) + 1;
@@ -29,6 +52,7 @@ Buff *makeZBuff(Buff *inputBuff) {
            inputBuff->len);
   return buff;
 }
+
 Buff *catBuffs(Buff *buff1, Buff *buff2) {
   Buff *result = malloc(sizeof(Buff));
   result->len = buff1->len + buff2->len - 1;
