@@ -144,7 +144,7 @@ BuffDB *makeDB(uint num, Buff **buffs) {
 }
 
 void writeDB(FILE *fd, BuffDB *db) {
-  for (int i = 0; i < db->num; i++) {
+  for (int i = 0; i < db->num - 1; i++) {
     fprintf(fd, "%s,", db->buffs[i]->name);
   }
   fprintf(fd, "%s\n", db->buffs[db->num - 1]->name);
