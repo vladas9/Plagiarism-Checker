@@ -45,7 +45,6 @@ char *read_c_file(const char *filename) {
 
 typedef struct Buff {
   char *dat;
-  char *name;
   ulong len;
 } Buff;
 
@@ -62,12 +61,11 @@ void dbAppend(BuffDB *db, Buff *buff) {
     db->dists[i] = malloc(sizeof(float) * (db->num + 1));
   }
 }
-Buff *makeBuff(char *input, char *name) {
+Buff *makeBuff(char *input) {
   Buff *buff = malloc(sizeof(Buff));
   buff->len = strlen(input) + 1;
   buff->dat = (char *)malloc(buff->len);
   strcpy(buff->dat, input);
-  buff->name = strdup(name);
   return buff;
 }
 
@@ -78,7 +76,6 @@ Buff *makeZBuff(Buff *inputBuff) {
   buff->dat = (char *)malloc(buff->len);
   compress((Bytef *)buff->dat, &buff->len, (const Bytef *)inputBuff->dat,
            inputBuff->len);
-  buff->name = inputBuff->name;
   return buff;
 }
 
@@ -86,7 +83,6 @@ Buff *catBuffs(Buff *buff1, Buff *buff2) {
   Buff *result = malloc(sizeof(Buff));
   result->len = buff1->len + buff2->len - 1;
   result->dat = malloc(result->len);
-  result->name = "";
 
   strcpy(result->dat, buff1->dat);
   strcat(result->dat, buff2->dat);
@@ -121,7 +117,6 @@ float normCompDist(Buff *x, Buff *y) {
 }
 
 BuffDB *makeDB(uint num, Buff **buffs) {
-
   BuffDB *db = malloc(sizeof(BuffDB));
   db->num = num;
   db->buffs = buffs;
@@ -145,23 +140,12 @@ BuffDB *makeDB(uint num, Buff **buffs) {
 
 void writeDB(FILE *fd, BuffDB *db) {
   for (int i = 0; i < db->num; i++) {
-    fprintf(fd, "%s,", db->buffs[i]->name);
-  }
-  fprintf(fd, "%s\n", db->buffs[db->num - 1]->name);
-
-  for (int i = 0; i < db->num; i++) {
     for (int j = 0; j < db->num - 1; j++) {
       fprintf(fd, "%f,", db->dists[i][j]);
     }
     fprintf(fd, "%f\n", db->dists[i][db->num - 1]);
   }
 }
-int compare(const void *a, const void *b) {
-  const Buff *buff_a = *(const Buff **)a;
-  const Buff *buff_b = *(const Buff **)b;
-  return strcmp(buff_a->name, buff_b->name);
-}
-
 Buff **crawl_dir(char *dir_path, int *idx) {
   DIR *dir;
   struct dirent *ent;
@@ -171,8 +155,9 @@ Buff **crawl_dir(char *dir_path, int *idx) {
     exit(EXIT_FAILURE);
   }
 
-  int cap = 5;
-  Buff **list = malloc(sizeof(Buff *) * cap);
+  int cap = 10;
+  Buff **list = malloc(sizeof(Buff *) * 10);
+
   while ((ent = readdir(dir)) != NULL) {
     if (*idx >= cap) {
       cap = cap * 2;
@@ -181,19 +166,14 @@ Buff **crawl_dir(char *dir_path, int *idx) {
 
     if (ent->d_type == DT_REG) {
       char file_path[256];
-      snprintf(file_path, sizeof(file_path), "%s/%s", dir_path, ent->d_name);
+      snprintf(file_path, sizeof(file_path), "%s%s", dir_path, ent->d_name);
       if (strstr(ent->d_name, ".c") != NULL) {
-
-        list[*idx] = makeBuff(read_c_file(file_path), ent->d_name);
+        list[*idx] = makeBuff(read_c_file(file_path));
         (*idx)++;
       }
     }
   }
   closedir(dir);
-
-  // Sort the list by file name
-  qsort(list, *idx, sizeof(Buff *), compare);
-
   return list;
 }
 
