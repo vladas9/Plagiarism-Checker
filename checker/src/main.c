@@ -50,18 +50,20 @@ typedef struct Buff {
 } Buff;
 
 typedef struct {
-  Buff **buffs;
+  Buff **buffs1;
+  Buff **buffs2;
   float **dists;
   uint num;
 } BuffDB;
 
-void dbAppend(BuffDB *db, Buff *buff) {
-  db->buffs = realloc(db->buffs, sizeof(Buff *) * (db->num + 1));
-  db->dists = realloc(db->dists, sizeof(float *) * (db->num + 1));
-  for (int i = 0; i < db->num; i++) {
-    db->dists[i] = malloc(sizeof(float) * (db->num + 1));
-  }
-}
+// void dbAppend(BuffDB *db, Buff *buff) {
+//   db->buffs = realloc(db->buffs, sizeof(Buff *) * (db->num + 1));
+//   db->dists = realloc(db->dists, sizeof(float *) * (db->num + 1));
+//   for (int i = 0; i < db->num; i++) {
+//     db->dists[i] = malloc(sizeof(float) * (db->num + 1));
+//   }
+// }
+
 Buff *makeBuff(char *input, char *name) {
   Buff *buff = malloc(sizeof(Buff));
   buff->len = strlen(input) + 1;
@@ -120,17 +122,17 @@ float normCompDist(Buff *x, Buff *y) {
   return ncd;
 }
 
-BuffDB *makeDB(uint num, Buff **buffs) {
-
+BuffDB *makeDB(uint num, Buff **buffs1, Buff **buffs2) {
   BuffDB *db = malloc(sizeof(BuffDB));
   db->num = num;
-  db->buffs = buffs;
+  db->buffs1 = buffs1;
+  db->buffs2 = buffs2;
   db->dists = malloc(sizeof(float *) * num);
 
   for (int i = 0; i < num; i++) {
     db->dists[i] = malloc(sizeof(float) * num);
     for (int j = 0; j < num; j++) {
-      db->dists[i][j] = normCompDist(buffs[i], buffs[j]);
+      db->dists[i][j] = normCompDist(buffs1[i], buffs2[j]);
     }
   }
   for (int i = 0; i < num; i++) {
@@ -143,19 +145,32 @@ BuffDB *makeDB(uint num, Buff **buffs) {
   return db;
 }
 
-void writeDB(FILE *fd, BuffDB *db) {
-  for (int i = 0; i < db->num - 1; i++) {
-    fprintf(fd, "%s,", db->buffs[i]->name);
+void symmDB(BuffDB *db) {
+  for (int i = 0; i < db->num; i++) {
+    for (int j = i + 1; j < db->num; j++) {
+      float avg = (db->dists[i][j] + db->dists[j][i]) / 2.0;
+      db->dists[i][j] = avg;
+      db->dists[j][i] = avg;
+    }
   }
-  fprintf(fd, "%s\n", db->buffs[db->num - 1]->name);
+}
+
+void writeDB(FILE *fd, BuffDB *db) {
+  fprintf(fd, "-------,");
+  for (int i = 0; i < db->num - 1; i++) {
+    fprintf(fd, "%s,", db->buffs1[i]->name);
+  }
+  fprintf(fd, "%s\n", db->buffs1[db->num - 1]->name);
 
   for (int i = 0; i < db->num; i++) {
+    fprintf(fd, "%s,", db->buffs2[i]->name);
     for (int j = 0; j < db->num - 1; j++) {
       fprintf(fd, "%f,", db->dists[i][j]);
     }
     fprintf(fd, "%f\n", db->dists[i][db->num - 1]);
   }
 }
+
 int compare(const void *a, const void *b) {
   const Buff *buff_a = *(const Buff **)a;
   const Buff *buff_b = *(const Buff **)b;
@@ -200,7 +215,7 @@ Buff **crawl_dir(char *dir_path, int *idx) {
 int main() {
   int num = 0;
   Buff **progs = crawl_dir("./solutions/", &num);
-  BuffDB *db = makeDB(num, progs);
+  BuffDB *db = makeDB(num, progs, progs);
 
   writeDB(stdout, db);
 
