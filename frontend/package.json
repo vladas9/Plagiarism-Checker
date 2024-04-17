@@ -16,16 +16,18 @@
   ],
   "dependencies": {
     "@types/react": "^18.2.38",
+    "@vitejs/plugin-react": "latest",
+    "autoprefixer": "latest",
+    "common-tags": "^1.8.2",
+    "d3-fetch": "^3.0.1",
+    "postcss": "latest",
+    "primeicons": "^7.0.0",
+    "primereact": "latest",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-scripts": "5.0.1",
     "react-transition-group": "^4.4.5",
-    "primereact": "latest",
-    "primeicons": "^7.0.0",
-    "vite": "latest",
-    "@vitejs/plugin-react": "latest",
     "tailwindcss": "latest",
-    "postcss": "latest",
-    "autoprefixer": "latest",
-    "react-scripts": "5.0.1"
+    "vite": "latest"
   }
 }
