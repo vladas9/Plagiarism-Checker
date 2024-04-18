@@ -57,7 +57,7 @@ Buff *makeZBuff(Buff *inputBuff) {
   buff->dat = (char *)malloc(buff->len);
   compress((Bytef *)buff->dat, &buff->len, (const Bytef *)inputBuff->dat,
            inputBuff->len);
-  buff->name = inputBuff->name;
+  buff->name = "";
   return buff;
 }
 
@@ -99,25 +99,40 @@ float normCompDist(Buff *x, Buff *y) {
   return ncd;
 }
 
-BuffDB *makeDB(uint num, Buff **buffs1, Buff **buffs2) {
+BuffDB *makeDB(BuffList *b_list1, BuffList *b_list2) {
   BuffDB *db = malloc(sizeof(BuffDB));
-  db->num = num;
-  db->buffs1 = buffs1;
-  db->buffs2 = buffs2;
-  db->dists = malloc(sizeof(float *) * num);
+  if (!db) {
+    fprintf(stderr, "Failed to allocate memory for BuffDB\n");
+    return NULL;
+  }
+  db->buffs1 = b_list1;
+  db->buffs2 = b_list2;
+  db->dists = malloc(sizeof(float *) * b_list1->len);
+  if (!db->dists) {
+    printf("Failed to allocate memory for dists array\n");
+    exit(1);
+  }
 
-  for (int i = 0; i < num; i++) {
-    db->dists[i] = malloc(sizeof(float) * num);
-    for (int j = 0; j < num; j++) {
-      db->dists[i][j] = normCompDist(buffs1[i], buffs2[j]);
+  for (int i = 0; i < b_list1->len; i++) {
+    db->dists[i] = malloc(sizeof(float) * b_list2->len);
+    if (!db->dists[i]) {
+      printf("Failed to allocate memory for dists[%d]\n", i);
+      exit(1);
+    }
+    for (int j = 0; j < b_list2->len; j++) {
+      db->dists[i][j] = normCompDist(b_list1->list[i], b_list2->list[j]);
     }
   }
   return db;
 }
 
 void symmDB(BuffDB *db) {
-  for (int i = 0; i < db->num; i++) {
-    for (int j = i + 1; j < db->num; j++) {
+  if (db->buffs1->len != db->buffs2->len) {
+    printf("symmDB failed, lenghts differ\n");
+    exit(1);
+  }
+  for (int i = 0; i < db->buffs1->len; i++) {
+    for (int j = i + 1; j < db->buffs1->len; j++) {
       float avg = (db->dists[i][j] + db->dists[j][i]) / 2.0;
       db->dists[i][j] = avg;
       db->dists[j][i] = avg;
@@ -127,17 +142,17 @@ void symmDB(BuffDB *db) {
 
 void writeDB(FILE *fd, BuffDB *db) {
   fprintf(fd, "-------,");
-  for (int i = 0; i < db->num - 1; i++) {
-    fprintf(fd, "%s,", db->buffs1[i]->name);
+  for (int i = 0; i < db->buffs1->len - 1; i++) {
+    fprintf(fd, "%s,", db->buffs1->list[i]->name);
   }
-  fprintf(fd, "%s\n", db->buffs1[db->num - 1]->name);
+  fprintf(fd, "%s\n", db->buffs1->list[db->buffs1->len - 1]->name);
 
-  for (int i = 0; i < db->num; i++) {
-    fprintf(fd, "%s,", db->buffs2[i]->name);
-    for (int j = 0; j < db->num - 1; j++) {
+  for (int i = 0; i < db->buffs2->len; i++) {
+    fprintf(fd, "%s,", db->buffs2->list[i]->name);
+    for (int j = 0; j < db->buffs1->len - 1; j++) {
       fprintf(fd, "%f,", db->dists[i][j]);
     }
-    fprintf(fd, "%f\n", db->dists[i][db->num - 1]);
+    fprintf(fd, "%f\n", db->dists[i][db->buffs1->len - 1]);
   }
 }
 
@@ -147,7 +162,7 @@ int compare(const void *a, const void *b) {
   return strcmp(buff_a->name, buff_b->name);
 }
 
-Buff **crawl_dir(char *dir_path, int *idx) {
+BuffList *crawlDir(char *dir_path) {
   DIR *dir;
   struct dirent *ent;
 
@@ -156,52 +171,45 @@ Buff **crawl_dir(char *dir_path, int *idx) {
     exit(EXIT_FAILURE);
   }
 
-  int cap = 5;
-  Buff **list = malloc(sizeof(Buff *) * cap);
+  BuffList *b_list = makeBuffList();
   while ((ent = readdir(dir)) != NULL) {
-    if (*idx >= cap) {
-      cap = cap * 2;
-      list = realloc(list, cap * sizeof(Buff *));
-    }
     if (ent->d_type == DT_REG) {
       char file_path[256];
       snprintf(file_path, sizeof(file_path), "%s/%s", dir_path, ent->d_name);
       if (strstr(ent->d_name, ".c") != NULL) {
-
-        list[*idx] = makeBuff(readCFile(file_path), file_path);
-        (*idx)++;
+        Buff *buff = makeBuff(readCFile(file_path), file_path);
+        pushBuff(b_list, buff);
       }
     }
   }
   closedir(dir);
-  qsort(list, *idx, sizeof(Buff *), compare);
-  return list;
-}
-// initialize_code_snippets
-BuffList *makeBuffList(void) {
-  BuffList *bList = malloc(sizeof(BuffList *));
-  bList->head = bList->tail = NULL;
-  return bList;
+  Buff **buffl = b_list->list;
+  qsort(buffl, b_list->len - 1, sizeof(Buff *), compare);
+  return b_list;
 }
 
-// cleanup_code_snippets
-void cleanupBuffList(BuffList *bl) {
-  Buff *current = bl->head;
-  while (current) {
-    Buff *temp = current;
-    current = current->next;
-    free(temp->dat);
-    free(temp->name);
-    free(temp);
+BuffList *makeBuffList() {
+  BuffList *bl = malloc(sizeof(BuffList));
+  if (bl == NULL) {
+    return NULL;
   }
-  bl->head = bl->tail = NULL;
+  bl->cap = 10;
+  bl->len = 0;
+  bl->list = malloc(sizeof(Buff *) * bl->cap);
+  if (bl->list == NULL) {
+    free(bl);
+    return NULL;
+  }
+  return bl;
 }
+
+// void cleanupBuffList(BuffList *bl) {}
 
 void pushBuff(BuffList *bl, Buff *buff) {
-  if (buff.tail == NULL) {
-    head = tail = makeBuff(snippet, char *name);
-  } else {
-    tail->next = snippet;
-    tail = snippet;
+  if (bl->len > bl->cap) {
+    bl->cap *= 2;
+    bl->list = realloc(bl->list, bl->cap);
   }
+  bl->list[bl->len] = buff;
+  bl->len++;
 }
