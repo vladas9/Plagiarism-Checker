@@ -41,11 +41,11 @@ char *readCFile(const char *filename) {
   return content;
 }
 
-Buff *makeBuff(char *input, char *name) {
+Buff *makeBuff(char *input, const char *name) {
   Buff *buff = malloc(sizeof(Buff));
   buff->len = strlen(input) + 1;
   buff->dat = (char *)malloc(buff->len);
-  strcpy(buff->dat, input);
+  buff->dat = strdup(input);
   buff->name = strdup(name);
   return buff;
 }
@@ -175,7 +175,7 @@ BuffList *crawlDir(char *dir_path) {
   while ((ent = readdir(dir)) != NULL) {
     if (ent->d_type == DT_REG) {
       char file_path[256];
-      snprintf(file_path, sizeof(file_path), "%s/%s", dir_path, ent->d_name);
+      snprintf(file_path, sizeof(file_path), "%s%s", dir_path, ent->d_name);
       if (strstr(ent->d_name, ".c") != NULL) {
         Buff *buff = makeBuff(readCFile(file_path), file_path);
         pushBuff(b_list, buff);

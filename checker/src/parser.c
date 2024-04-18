@@ -1,9 +1,15 @@
 #include "../include/parser.h"
+#include <clang-c/CXString.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void addSnippet(BuffList *bl, char *code, char *name) {
+typedef struct {
+  BuffList *buff_list;
+  char *file_content;
+} VisitorData;
+
+void addSnippet(BuffList *bl, char *code, const char *name) {
   Buff *buff = makeBuff(code, name);
   pushBuff(bl, buff);
 }
@@ -29,29 +35,40 @@ enum CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
 
   if (cursorIsValid(cursorKind)) {
     CXCursor bodyCursor = clang_getCursorDefinition(cursor);
+    CXString name = clang_getCursorSpelling(cursor);
     if (!clang_Cursor_isNull(bodyCursor)) {
-      char *fileContent = (char *)client_data;
-      if (fileContent) {
-        CXSourceRange range = clang_getCursorExtent(bodyCursor);
-        CXSourceLocation startLoc = clang_getRangeStart(range);
-        CXSourceLocation endLoc = clang_getRangeEnd(range);
-        unsigned int startOffset, endOffset;
-        clang_getExpansionLocation(startLoc, NULL, NULL, NULL, &startOffset);
-        clang_getExpansionLocation(endLoc, NULL, NULL, NULL, &endOffset);
+      BuffList *buffList = (BuffList *)client_data;
+      CXSourceRange range = clang_getCursorExtent(bodyCursor);
+      CXSourceLocation startLoc = clang_getRangeStart(range);
+      CXSourceLocation endLoc = clang_getRangeEnd(range);
+      unsigned int startOffset, endOffset;
+      CXFile file;
+      clang_getExpansionLocation(startLoc, &file, NULL, NULL, &startOffset);
+      clang_getExpansionLocation(endLoc, NULL, NULL, NULL, &endOffset);
 
-        unsigned int length = endOffset - startOffset;
-        char *code = (char *)malloc(length + 1);
-        strncpy(code, fileContent + startOffset, length);
-        code[length] = '\0';
-        addSnippet(char *code) free(code);
+      CXString fileName = clang_getFileName(file);
+      FILE *fp = fopen(clang_getCString(fileName), "r");
+      if (fp) {
+        fseek(fp, startOffset, SEEK_SET);
+        char *code = (char *)malloc(endOffset - startOffset + 1);
+        if (fread(code, 1, endOffset - startOffset, fp) ==
+            endOffset - startOffset) {
+          code[endOffset - startOffset] = '\0';
+          addSnippet(buffList, code, clang_getCString(name));
+        }
+        free(code);
+        fclose(fp);
       }
+      clang_disposeString(fileName);
+      clang_disposeString(name);
     }
     return CXChildVisit_Recurse;
   }
   return CXChildVisit_Continue;
 }
 
-int parse_source_code(const char *filename) {
+BuffList *parseCodeTxt(const char *filename) {
+  BuffList *buff_list = makeBuffList();
   CXIndex index = clang_createIndex(0, 0);
   CXTranslationUnit unit = clang_parseTranslationUnit(
       index, filename, NULL, 0, NULL, 0, CXTranslationUnit_None);
@@ -59,16 +76,16 @@ int parse_source_code(const char *filename) {
   if (unit == NULL) {
     fprintf(stderr, "Unable to parse translation unit. Quitting.\n");
     clang_disposeIndex(index);
-    return -1;
+    return NULL;
   }
 
-  // Read the entire file once
+  // Read file content
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror("Failed to open file");
     clang_disposeTranslationUnit(unit);
     clang_disposeIndex(index);
-    return -1;
+    return NULL;
   }
   fseek(fp, 0, SEEK_END);
   long fileSize = ftell(fp);
@@ -78,10 +95,14 @@ int parse_source_code(const char *filename) {
   fileContent[fileSize] = '\0';
   fclose(fp);
 
+  // Pass VisitorData to the visitor function
   CXCursor cursor = clang_getTranslationUnitCursor(unit);
-  clang_visitChildren(cursor, visitor, fileContent);
+  clang_visitChildren(cursor, visitor, &buff_list);
+
+  // Cleanup
   free(fileContent);
   clang_disposeTranslationUnit(unit);
   clang_disposeIndex(index);
-  return 0;
+
+  return buff_list;
 }

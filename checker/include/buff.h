@@ -27,7 +27,7 @@ typedef struct {
 } BuffDB;
 
 BuffList *crawlDir(char *txt);
-Buff *makeBuff(char *input, char *name);
+Buff *makeBuff(char *input, const char *name);
 Buff *makeZBuff(Buff *inputBuff);
 Buff *catBuffs(Buff *buff1, Buff *buff2);
 Buff *maxBuff(Buff *x, Buff *y);
