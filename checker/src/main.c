@@ -16,14 +16,20 @@ int main(int argc, char *argv[]) {
   BuffDB *db = makeDB(progs, progs);
   symmDB(db);
 
-  BuffList *blocks_a = parseCodeTxt(db->buffs1->list[10]->name);
-  BuffList *blocks_b = parseCodeTxt(db->buffs1->list[10]->name);
+  FILE *fd_db = fopen("./tmp/all_files.csv", "w");
+  writeDB(fd_db, db);
+  fclose(fd_db);
+
+  // db->buffs1->list[1]->name
+  BuffList *blocks_a = parseCodeTxt("./solutions/sol_a.c");
+  // db->buffs1->list[10]->name
+  BuffList *blocks_b = parseCodeTxt("./solutions/sol_k.c");
+
   for (int i = 0; i < blocks_a->len; i++) {
     printf("%s\n", blocks_a->list[i]->name);
   }
-  BuffDB *blocksDB = makeDB(blocks_a, blocks_b);
 
-  writeDB(stdout, blocksDB);
+  BuffDB *blocksDB = makeDB(blocks_a, blocks_b);
 
   // Free mem.
   // for (int i = 0; i < progs->len; i++) {
