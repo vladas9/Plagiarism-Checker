@@ -1,0 +1,3 @@
+[
+"int main () {\n    int l;\n    scanf(\"%d\", &l);\n    for (int i = 0; i < l; i++) {\n        int n;\n        scanf(\"%d\", &n);\n        if (n < 7) {\n            puts(\"NO\");\n            continue;\n        }\n        switch (n % 3) {\n            case 1:\n            case 2:\n                printf(\"YES\\n1 2 %d\\n\", n-3);\n                break;\n\n            case 0:\n                if (n==9) puts(\"NO\");\n                else printf(\"YES\\n1 4 %d\\n\", n-5);\n        }\n    }\n    return 0;\n}"
+]
