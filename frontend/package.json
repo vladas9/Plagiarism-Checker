@@ -1,0 +1,38 @@
+{
+  "name": "primereact_demo",
+  "description": "**** PrimeReact is an open source UI library for React featuring a rich set of 80+ components, a theme designer, various theme alternatives such as Material, Bootstrap, Tailwind, premium templates and professional support. In addition, it integrates with PrimeBlock, which has 370+ ready to use UI blocks to build spectacular applications in no time.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "main": "src/main.jsx",
+  "keywords": [
+    "primereact",
+    "react",
+    "vite",
+    "starter"
+  ],
+  "dependencies": {
+    "@carbon/charts": "^1.15.6",
+    "@types/react": "^18.2.38",
+    "@vitejs/plugin-react": "latest",
+    "autoprefixer": "latest",
+    "common-tags": "^1.8.2",
+    "d3-fetch": "^3.0.1",
+    "papaparse": "^5.4.1",
+    "postcss": "latest",
+    "primeicons": "^7.0.0",
+    "primereact": "latest",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-heatmap-grid": "^0.9.0",
+    "react-scripts": "5.0.1",
+    "react-transition-group": "^4.4.5",
+    "sweetalert2": "^11.10.8",
+    "sweetalert2-react-content": "^5.0.7",
+    "tailwindcss": "latest",
+    "vite": "latest"
+  }
+}
