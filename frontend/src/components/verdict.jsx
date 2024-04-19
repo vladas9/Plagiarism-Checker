@@ -16,6 +16,16 @@ function getAverage(arr) {
     return arr.flat().reduce((acc, val) => acc + val, 0) / arr.flat().length;
 }
 
+function noExtension(filename) {
+    var lastDotIndex = filename.lastIndexOf('.');
+    
+    if (lastDotIndex === -1) {
+        return filename;
+    }
+    
+    return filename.substring(0, lastDotIndex);
+}
+
 
 export default function UnstyledDemo(props) {    
     const data = useRef([]);
@@ -24,21 +34,70 @@ export default function UnstyledDemo(props) {
     const rowHeaders = useRef([]);
     const threshold = useRef(50);
 
-    function showFile(value) {
-        console.log(threshold.current);
-        return (<FileComparison plagiarised={value > threshold.current}/>);
+    function showFile(value, src, cmp, blocks) {
+        return (
+            <FileComparison 
+                plagiarised={value > threshold.current} 
+                src={src} 
+                cmp={cmp}
+                blocks={blocks}/>
+        );
     }
 
     function onGridClick(x, y)  {
+        const src_file = columnHeaders.current[x];
+        const cmp_file = rowHeaders.current[y];
         const val = data.current[x][y];
-        MySwal.fire({
-            title: <p>Hello World</p>,
-            html: showFile(val)
-        })
+        const urls = [src_file +  ".json", cmp_file + ".json", `${src_file}_vs_${cmp_file}.csv`];
+        Promise.all(urls.map(u=>fetch(u)))
+        .then(res =>
+            Promise.all([ res[0].json(), res[1].json(), res[2].text()])
+        ).then(res => {
+            const [ src_json, cmp_json, csv ] = res;
+            console.log("src_json", src_json);
+            console.log("cmp_json", cmp_json);
+            Papa.parse(csv, {
+                download: true,
+                delimiter: ',',
+                complete: (res, file) => {
+                    console.log("completed parsing");
+                    console.log("file", file);
+                    const lines = file.trim().split('\n');
+
+                    const srcBlocks = lines[0].split(',').slice(1);
+                    console.log("srcBlocks", srcBlocks);
+                    const cmpBlocks = lines.slice(1).map(line => line.split(',')[0]);
+                    console.log("cmpBlocks", cmpBlocks);
+
+                    const susBlocks = [];
+                    const matrix = lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(100 - v * 100)));
+                    console.log("matrix", matrix);
+                    for(let i = 0;i < matrix.length;i++) {
+                        for(let j = 0;j < matrix[0].length;j++) {
+                            console.log("matrix[i][j]", i, j, matrix[i][j]);
+                            console.log("threshold", threshold);
+                            if(matrix[i][j] > threshold.current) {
+                                console.log("greater than threshold");
+                                susBlocks.push([ src_json[j], cmp_json[i], matrix[i][j]]);
+                            }
+                        }
+                    }
+
+                    console.log("susBlocks", susBlocks);
+
+                    MySwal.fire({
+                        title: <p>{`${src_file} & ${cmp_file}`}</p>,
+                        width: "800px",
+                        html: showFile(val, src_file, cmp_file, susBlocks)
+                    })
+                }
+            })
+        });
+        
     }
   
     useEffect(() => {  
-      fetch('./general.csv')
+      fetch('./all_files.csv')
       .then( res => res.text() )
       .then(csv => {
         Papa.parse(csv, {
@@ -55,21 +114,9 @@ export default function UnstyledDemo(props) {
                 console.log("cmpFiles", cmpFiles);
                 rowHeaders.current = cmpFiles;
 
-                const matrix = lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(v * 100)));
+                const matrix = lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(100 - v * 100)));
                 data.current = matrix;
                 console.log("matrix ", data.current);
-
-                // const result = [];
-                // for (let i = 0; i < srcFiles.length; i++) {
-                //     for (let j = 0; j < cmpFiles.length; j++) {
-                //         result.push({
-                //             srcfile: srcFiles[i].replace('\r', ''),
-                //             cmpfile: cmpFiles[j],
-                //             value: matrix[i][j]
-                //         });
-                //     }
-                // }
-                // console.log(result);
 
                 setGrid(<div className="dark:text-white">
                     <HeatMap 

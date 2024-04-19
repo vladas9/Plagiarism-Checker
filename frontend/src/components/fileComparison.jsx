@@ -10,16 +10,26 @@ function hi() {
 }
 hi();`
 
-export default function FileComparison({ plagiarised }) {
-    console.log(plagiarised);
+export default function FileComparison({ plagiarised, src, cmp, blocks }) {
+    console.log(blocks);
     return (
         <div className="card text-center">
             <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white">Verdict</h1>
             <p className="font-normal text-xl text-gray-700 dark:text-gray-400"> {"The code is "} {plagiarised ? red : green}</p>
+            {blocks.length > 0
+                ? <p className="pt-8 font-normal text-xl text-gray-700 dark:text-gray-400">Code blocks that look similar: </p> 
+                : null
+            }
+            
 
-            <p className="pt-8 font-normal text-xl text-gray-700 dark:text-gray-400">Code blocks that look similar: </p>
-
-            <CodeBlock path="/path/to/original/file" code={code}/>
+            <div>
+                {blocks.map(b => 
+                    <div>
+                        <p className="font-normal text-xl text-gray-700 dark:text-gray-400">{`Similarity: ${Math.round(b[2])}%`}</p>
+                        <CodeBlock path={src} code={b[0]}/>
+                        <CodeBlock path={cmp} code={b[1]}/>
+                    </div>)}
+            </div>
         </div>
     )
 }
