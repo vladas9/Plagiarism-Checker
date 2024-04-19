@@ -1,53 +1,135 @@
-import React, { useState } from 'react';
-import { FileUpload } from 'primereact/fileupload';
-import CodeBlock from './codeBlock';
+import React, { useState, useEffect, useRef } from 'react';
+import Papa from 'papaparse';
+import HeatMap from "react-heatmap-grid";
+import { InputText } from 'primereact/inputtext';
+import Swal from 'sweetalert2';
+import FileComparison from './fileComparison';
+import withReactContent from 'sweetalert2-react-content'
 
-const red = <span className="bg-red-100 text-red-800 text-xl font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-red-900 dark:text-red-300">Plagiarised</span>;
-const green = <span className="bg-green-100 text-green-800 text-xl font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300">Not Plagiarised</span>
+const MySwal = withReactContent(Swal);
 
-const code = `
-// Sample code block
-function hi() {
-    console.log("Hello, World!");
+function getMax(a){
+    return Math.max(...a.map(e => Array.isArray(e) ? getMax(e) : e));
 }
-hi();`
+
+function getAverage(arr) { 
+    return arr.flat().reduce((acc, val) => acc + val, 0) / arr.flat().length;
+}
+
 
 export default function UnstyledDemo(props) {    
-    const [ plagiarised, setPlagiarised ] = useState(props.plagiarised || true);
+    const data = useRef([]);
+    const [grid, setGrid] = useState(null);
+    const columnHeaders = useRef([]);
+    const rowHeaders = useRef([]);
+    const threshold = useRef(50);
 
+    function showFile(value) {
+        console.log(threshold.current);
+        return (<FileComparison plagiarised={value > threshold.current}/>);
+    }
+
+    function onGridClick(x, y)  {
+        const val = data.current[x][y];
+        MySwal.fire({
+            title: <p>Hello World</p>,
+            html: showFile(val)
+        })
+    }
+  
+    useEffect(() => {  
+      fetch('./general.csv')
+      .then( res => res.text() )
+      .then(csv => {
+        Papa.parse(csv, {
+            download: true,
+            delimiter: ',',
+            complete: (res, file) => {
+                const lines = file.trim().split('\n');
+
+                const srcFiles = lines[0].split(',').slice(1);
+                columnHeaders.current = srcFiles;
+                console.log("srcFiles", srcFiles);
+
+                const cmpFiles = lines.slice(1).map(line => line.split(',')[0]);
+                console.log("cmpFiles", cmpFiles);
+                rowHeaders.current = cmpFiles;
+
+                const matrix = lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(v * 100)));
+                data.current = matrix;
+                console.log("matrix ", data.current);
+
+                // const result = [];
+                // for (let i = 0; i < srcFiles.length; i++) {
+                //     for (let j = 0; j < cmpFiles.length; j++) {
+                //         result.push({
+                //             srcfile: srcFiles[i].replace('\r', ''),
+                //             cmpfile: cmpFiles[j],
+                //             value: matrix[i][j]
+                //         });
+                //     }
+                // }
+                // console.log(result);
+
+                setGrid(<div className="dark:text-white">
+                    <HeatMap 
+                        yLabelWidth={60} 
+                        xLabels={srcFiles} 
+                        yLabels={cmpFiles} 
+                        data={matrix}
+                        cellRender={(value) => value && `${Math.round(value)}%`} 
+                        title={(value, unit) => `${value}`}
+                        cellStyle={(background, value, min, max, data, x, y) => ({
+                            background: `rgba(66, 86, 244, ${1 - (max - value) / (max - min)})`,
+                            fontSize: "11px",
+                        })}
+                        onClick={(x, y) => { onGridClick(x, y)} }  
+                    />
+
+                    <div className="grid items-center mt-4 ml-8 center grid-cols-3">
+                        <div className="max-w-sm mt-4 rounded overflow-hidden shadow-lg">
+                            <div className="px-6 py-4">
+                                <div className="font-bold text-xl mb-2 dark:text-white">Highest Similarity</div>
+                                <span className="text-3xl text-red-800 font-bold text-gray-900 dark:text-white">{Math.round(getMax(matrix))}%</span>
+                            </div>
+                        </div>
+                        <div className="max-w-sm mt-4 rounded overflow-hidden shadow-lg">
+                            <div className="px-6 py-4">
+                                <div className="font-bold text-xl mb-2 dark:text-white">Average Similarity</div>
+                                <span className="text-3xl text-yellow-500 font-bold text-gray-900 dark:text-white">{Math.round(getAverage(matrix))}%</span>
+                            </div>
+                        </div>
+                        <div className="max-w-sm mt-4 rounded overflow-hidden shadow-lg">
+                            <div className="font-bold text-xl mb-2  dark:text-white">Plagiarism Threshold</div>
+                            <div className="mb-4">
+                                <InputText keyfilter="int" onChange={(e) => {
+                                    if(e.target.value.length > 3) return;
+
+                                    console.log("setting to ", Number(e.target.value));
+                                    threshold.current = Number(e.target.value);
+                                    console.log(threshold);
+                                }} />
+                            </div>      
+                        </div>
+                    </div>        
+                </div>)
+            }
+          })
+      })
+      
+    }, []);
+
+    useEffect(() => {
+        console.log("set Threshold value: ",  threshold.current);
+    }, [threshold])
+      
     return (
         <div className="card text-center">
             <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white">Verdict</h1>
-            <p className="font-normal text-xl text-gray-700 dark:text-gray-400"> {"The code is "} {plagiarised ? red : green}</p>
 
-            <p className="pt-8 font-normal text-xl text-gray-700 dark:text-gray-400">Code blocks that look similar: </p>
-
-            <CodeBlock path="/path/to/original/file" code={code}/>
-            
-
-            {/* <div class="mb-8 max-w-screen-md mx-auto text-left">
-                <pre class="bg-gray-900 p-4 rounded-lg">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-gray-400">/path/to/submitted/file</span>
-                    </div>
-                    <code class="text-white">
-                    {stripIndent`
-                    // Sample code block
-                    function hi() {
-                    
-                    `}
-                    <br />
-                    <mark> {stripIndent`
-                    console.log("Hello, World!");
-                    `}</mark>
-                    <br />
-                    {stripIndent`
-                    }
-
-                    hi();`}
-                    </code>
-                </pre>
-            </div> */}
+            <div id="chart" className="mt-4">
+                {grid ? grid : null}
+            </div>            
         </div>
     )
 }
