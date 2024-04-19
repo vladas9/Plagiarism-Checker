@@ -1,0 +1,2 @@
+-------,read_c_file,Buff,BuffDB,dbAppend,makeBuff,makeZBuff,catBuffs,maxBuff,minBuff,normCompDist,makeDB,writeDB,crawl_dir,main
+main,0.877778,0.883721,0.872093,0.790698,0.796512,0.809249,0.779070,0.854651,0.848837,0.819767,0.835391,0.796512,0.893617,0.805128

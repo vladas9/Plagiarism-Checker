@@ -1,4 +1,9 @@
 #include<stdio.h>
+struct Avocado {
+  char* Obama;
+  float idoknowwhatsgoingon;
+};
+
 int main()
 {
     int t=0,i=0,n=0;

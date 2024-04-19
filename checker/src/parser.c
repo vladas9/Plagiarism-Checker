@@ -5,8 +5,8 @@
 #include <string.h>
 
 typedef struct {
-  BuffList *buff_list;
-  char *file_content;
+  BuffList *buffList;
+  const char *fileName;
 } VisitorData;
 
 void addSnippet(BuffList *bl, char *code, const char *name) {
@@ -36,8 +36,12 @@ enum CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
   if (cursorIsValid(cursorKind)) {
     CXCursor bodyCursor = clang_getCursorDefinition(cursor);
     CXString name = clang_getCursorSpelling(cursor);
+
     if (!clang_Cursor_isNull(bodyCursor)) {
-      BuffList *buffList = (BuffList *)client_data;
+      VisitorData *vData = (VisitorData *)client_data;
+      BuffList *buffList = vData->buffList;
+      const char *origFileName = vData->fileName;
+
       CXSourceRange range = clang_getCursorExtent(bodyCursor);
       CXSourceLocation startLoc = clang_getRangeStart(range);
       CXSourceLocation endLoc = clang_getRangeEnd(range);
@@ -46,21 +50,25 @@ enum CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
       clang_getExpansionLocation(startLoc, &file, NULL, NULL, &startOffset);
       clang_getExpansionLocation(endLoc, NULL, NULL, NULL, &endOffset);
 
-      CXString fileName = clang_getFileName(file);
-      FILE *fp = fopen(clang_getCString(fileName), "r");
-      if (fp) {
-        fseek(fp, startOffset, SEEK_SET);
-        char *code = (char *)malloc(endOffset - startOffset + 1);
-        if (fread(code, 1, endOffset - startOffset, fp) ==
-            endOffset - startOffset) {
-          code[endOffset - startOffset] = '\0';
-          // printf("codeblock:\n%s\n", code);
-          addSnippet(buffList, code, clang_getCString(name));
+      CXString cxFileName = clang_getFileName(file);
+      const char *fileName = clang_getCString(cxFileName);
+      //printf("%s\n", fileName);
+      if (strcmp(fileName, origFileName) == 0) {
+        FILE *fp = fopen(fileName, "r");
+        if (fp) {
+          fseek(fp, startOffset, SEEK_SET);
+          char *code = (char *)malloc(endOffset - startOffset + 1);
+          if (fread(code, 1, endOffset - startOffset, fp) ==
+              endOffset - startOffset) {
+            code[endOffset - startOffset] = '\0';
+            // printf("codeblock:\n%s\n", code);
+            addSnippet(buffList, code, clang_getCString(name));
+          }
+          // free(code);
+          fclose(fp);
         }
-        // free(code);
-        fclose(fp);
       }
-      clang_disposeString(fileName);
+      clang_disposeString(cxFileName);
       clang_disposeString(name);
     }
     return CXChildVisit_Recurse;
@@ -69,7 +77,8 @@ enum CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
 }
 
 BuffList *parseCodeTxt(const char *filename) {
-  BuffList *buff_list = makeBuffList();
+  VisitorData vData = {NULL, filename};
+  vData.buffList = makeBuffList();
   CXIndex index = clang_createIndex(0, 0);
   CXTranslationUnit unit = clang_parseTranslationUnit(
       index, filename, NULL, 0, NULL, 0, CXTranslationUnit_None);
@@ -98,12 +107,12 @@ BuffList *parseCodeTxt(const char *filename) {
 
   // Pass VisitorData to the visitor function
   CXCursor cursor = clang_getTranslationUnitCursor(unit);
-  clang_visitChildren(cursor, visitor, buff_list);
+  clang_visitChildren(cursor, visitor, &vData);
 
   // Cleanup
   free(fileContent);
   clang_disposeTranslationUnit(unit);
   clang_disposeIndex(index);
 
-  return buff_list;
+  return vData.buffList;
 }

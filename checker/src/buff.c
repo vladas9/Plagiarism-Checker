@@ -2,6 +2,7 @@
 #include "../include/parser.h"
 #include <assert.h>
 #include <dirent.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,20 +107,26 @@ BuffDB *makeDB(BuffList *b_list1, BuffList *b_list2) {
   }
   db->buffs1 = b_list1;
   db->buffs2 = b_list2;
-  db->dists = malloc(sizeof(float *) * b_list1->len);
+  db->dists = malloc(sizeof(float *) * b_list2->len);
   if (!db->dists) {
-    printf("Failed to allocate memory for dists array\n");
-    exit(1);
+    fprintf(stderr, "Failed to allocate memory for dists array\n");
+    free(db);
+    return NULL;
   }
 
-  for (int i = 0; i < b_list1->len; i++) {
-    db->dists[i] = malloc(sizeof(float) * b_list2->len);
+  for (int i = 0; i < b_list2->len; i++) {
+    db->dists[i] = malloc(sizeof(float) * b_list1->len);
     if (!db->dists[i]) {
-      printf("Failed to allocate memory for dists[%d]\n", i);
-      exit(1);
+      fprintf(stderr, "Failed to allocate memory for dists[%d]\n", i);
+      for (int k = 0; k < i; k++) {
+        free(db->dists[k]);
+      }
+      free(db->dists);
+      free(db);
+      return NULL;
     }
-    for (int j = 0; j < b_list2->len; j++) {
-      db->dists[i][j] = normCompDist(b_list1->list[i], b_list2->list[j]);
+    for (int j = 0; j < b_list1->len; j++) {
+      db->dists[i][j] = normCompDist(b_list2->list[i], b_list1->list[j]);
     }
   }
   return db;
@@ -139,20 +146,63 @@ void symmDB(BuffDB *db) {
   }
 }
 
+// ChatGpt variant, maybe it's better, no idea..
+// void writeDB(FILE *fd, BuffDB *db) {
+//   if (fd == NULL || db == NULL || db->buffs1 == NULL || db->buffs2 == NULL)
+//     fprintf(stderr, "db empty, not writing\n");
+//   return;
+//
+//   // Print column headers
+//   fprintf(fd, "-------,");
+//   if (db->buffs1->len > 0) {
+//     for (int i = 0; i < db->buffs1->len - 1; i++) {
+//       if (db->buffs1->list[i]) {
+//         fprintf(fd, "%s,", db->buffs1->list[i]->name);
+//       }
+//     }
+//     if (db->buffs1->list[db->buffs1->len - 1]) {
+//       fprintf(fd, "%s\n", db->buffs1->list[db->buffs1->len - 1]->name);
+//     } else {
+//       fprintf(fd, "\n");
+//     }
+//   } else {
+//     fprintf(fd, "\n");
+//   }
+//
+//   // Print matrix of distances
+//   if (db->dists != NULL) {
+//     for (int i = 0; i < db->buffs2->len; i++) {
+//       if (db->buffs2->list[i]) {
+//         fprintf(fd, "%s,", db->buffs2->list[i]->name);
+//       }
+//
+//       if (db->buffs1->len > 0) {
+//         for (int j = 0; j < db->buffs1->len - 1; j++) {
+//           fprintf(fd, "%f,", db->dists[i][j]);
+//         }
+//         fprintf(fd, "%f\n", db->dists[i][db->buffs1->len - 1]);
+//       } else {
+//         fprintf(fd, "\n");
+//       }
+//     }
+//   }
+// }
+
 void writeDB(FILE *fd, BuffDB *db) {
   fprintf(fd, "-------,");
   for (int i = 0; i < db->buffs1->len - 1; i++) {
-    fprintf(fd, "%s,", db->buffs1->list[i]->name);
+    fprintf(fd, "%s,", basename(strdup(db->buffs1->list[i]->name)));
   }
-  fprintf(fd, "%s\n", db->buffs1->list[db->buffs1->len - 1]->name);
-
+  fprintf(fd, "%s\n",
+          basename(strdup(db->buffs1->list[db->buffs1->len - 1]->name)));
   for (int i = 0; i < db->buffs2->len; i++) {
-    fprintf(fd, "%s,", db->buffs2->list[i]->name);
+    fprintf(fd, "%s,", basename(strdup(db->buffs2->list[i]->name)));
     for (int j = 0; j < db->buffs1->len - 1; j++) {
       fprintf(fd, "%f,", db->dists[i][j]);
     }
     fprintf(fd, "%f\n", db->dists[i][db->buffs1->len - 1]);
   }
+  return;
 }
 
 int compare(const void *a, const void *b) {
@@ -212,4 +262,81 @@ void pushBuff(BuffList *bl, Buff *buff) {
 
   bl->list[bl->len] = buff;
   bl->len++;
+}
+
+char *escapeJsonString(const char *input) {
+  if (!input)
+    return NULL;
+
+  int len = strlen(input);
+  char *escaped =
+      malloc(len * 2 + 1); // Worst case, every char needs to be escaped
+  if (!escaped)
+    return NULL;
+
+  char *out = escaped;
+  while (*input) {
+    switch (*input) {
+    case '\"':
+      *out++ = '\\';
+      *out++ = '\"';
+      break;
+    case '\\':
+      *out++ = '\\';
+      *out++ = '\\';
+      break;
+    case '\b':
+      *out++ = '\\';
+      *out++ = 'b';
+      break;
+    case '\f':
+      *out++ = '\\';
+      *out++ = 'f';
+      break;
+    case '\n':
+      *out++ = '\\';
+      *out++ = 'n';
+      break;
+    case '\r':
+      *out++ = '\\';
+      *out++ = 'r';
+      break;
+    case '\t':
+      *out++ = '\\';
+      *out++ = 't';
+      break;
+    default:
+      *out++ = *input;
+    }
+    input++;
+  }
+  *out = '\0';
+  return escaped;
+}
+
+void writeList(FILE *fd, BuffList *buffList) {
+  if (!fd || !buffList->list || buffList->len == 0)
+    return;
+
+  fprintf(fd, "[\n");
+  for (int i = 0; i < buffList->len; i++) {
+    Buff *buff = buffList->list[i];
+    if (!buff)
+      continue;
+
+    char *escapedDat = escapeJsonString(buff->dat);
+    // char *escapedName = escapeJsonString(buff->name);
+
+    fprintf(fd, "\"%s\"", escapedDat ? escapedDat : "");
+
+    if (i < buffList->len - 1) {
+      fprintf(fd, ",\n");
+    } else {
+      fprintf(fd, "\n");
+    }
+
+    free(escapedDat);
+    // free(escapedName);
+  }
+  fprintf(fd, "]\n");
 }

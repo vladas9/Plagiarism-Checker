@@ -1,4 +1,11 @@
 #include<stdio.h>
+
+
+struct avocado {
+    int obama;
+    float idunnowhatsgoingon;
+};
+
 int main(){
     int t;
     scanf("%d",&t);

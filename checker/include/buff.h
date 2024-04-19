@@ -37,7 +37,7 @@ float normCompDist(Buff *x, Buff *y);
 void symmDB(BuffDB *db);
 
 void writeDB(FILE *fd, BuffDB *db);
-void writeList(FILE *fd, BuffList);
+void writeList(FILE *fd, BuffList *bl);
 
 BuffList *makeBuffList();
 void pushBuff(BuffList *b_list, Buff *buff);
