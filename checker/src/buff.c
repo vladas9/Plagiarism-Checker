@@ -44,7 +44,6 @@ char *readCFile(const char *filename) {
 Buff *makeBuff(char *input, const char *name) {
   Buff *buff = malloc(sizeof(Buff));
   buff->len = strlen(input) + 1;
-  buff->dat = (char *)malloc(buff->len);
   buff->dat = strdup(input);
   buff->name = strdup(name);
   return buff;
@@ -208,8 +207,9 @@ BuffList *makeBuffList() {
 void pushBuff(BuffList *bl, Buff *buff) {
   if (bl->len > bl->cap) {
     bl->cap *= 2;
-    bl->list = realloc(bl->list, bl->cap);
+    bl->list = realloc(bl->list, bl->cap * sizeof(Buff *));
   }
+
   bl->list[bl->len] = buff;
   bl->len++;
 }

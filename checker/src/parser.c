@@ -54,9 +54,10 @@ enum CXChildVisitResult visitor(CXCursor cursor, CXCursor parent,
         if (fread(code, 1, endOffset - startOffset, fp) ==
             endOffset - startOffset) {
           code[endOffset - startOffset] = '\0';
+          // printf("codeblock:\n%s\n", code);
           addSnippet(buffList, code, clang_getCString(name));
         }
-        free(code);
+        // free(code);
         fclose(fp);
       }
       clang_disposeString(fileName);
@@ -97,7 +98,7 @@ BuffList *parseCodeTxt(const char *filename) {
 
   // Pass VisitorData to the visitor function
   CXCursor cursor = clang_getTranslationUnitCursor(unit);
-  clang_visitChildren(cursor, visitor, &buff_list);
+  clang_visitChildren(cursor, visitor, buff_list);
 
   // Cleanup
   free(fileContent);

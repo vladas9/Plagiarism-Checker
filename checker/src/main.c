@@ -21,15 +21,18 @@ int main(int argc, char *argv[]) {
   fclose(fd_db);
 
   // db->buffs1->list[1]->name
-  BuffList *blocks_a = parseCodeTxt("./solutions/sol_a.c");
+  BuffList *blocks_a = parseCodeTxt("./solutions/sol_k.c");
   // db->buffs1->list[10]->name
   BuffList *blocks_b = parseCodeTxt("./solutions/sol_k.c");
 
-  for (int i = 0; i < blocks_a->len; i++) {
-    printf("%s\n", blocks_a->list[i]->name);
-  }
+  // for (int i = 0; i < blocks_b->len; i++) {
+  //   printf("%s\n", blocks_b->list[i]->name);
+  // }
 
+  FILE *fd_blocks_db = fopen("./tmp/blocks.csv", "w");
   BuffDB *blocksDB = makeDB(blocks_a, blocks_b);
+  writeDB(fd_blocks_db, blocksDB);
+  fclose(fd_blocks_db);
 
   // Free mem.
   // for (int i = 0; i < progs->len; i++) {
