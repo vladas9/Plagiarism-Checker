@@ -11,25 +11,23 @@ function hi() {
 hi();`
 
 export default function FileComparison({ plagiarised, src, cmp, blocks }) {
-    console.log(blocks);
-    return (
-        <div className="card text-center">
-            <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white">Verdict</h1>
-            <p className="font-normal text-xl text-gray-700 dark:text-gray-400"> {"The code is "} {plagiarised ? red : green}</p>
-            {blocks.length > 0
-                ? <p className="pt-8 font-normal text-xl text-gray-700 dark:text-gray-400">Code blocks that look similar: </p> 
-                : null
-            }
-            
-
-            <div>
-                {blocks.map(b => 
-                    <div>
-                        <p className="font-normal text-xl text-gray-700 dark:text-gray-400">{`Similarity: ${Math.round(b[2])}%`}</p>
-                        <CodeBlock path={src} code={b[0]}/>
-                        <CodeBlock path={cmp} code={b[1]}/>
-                    </div>)}
-            </div>
-        </div>
-    )
+  console.log(blocks);
+  return (
+    <div className="rounded-lg shadow-md p-6 transition duration-100 hover:shadow-lg text-center">
+      <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 dark:text-white">Verdict</h1>
+      <p className="font-normal text-xl text-gray-700 dark:text-gray-400"> {"The code is "} {plagiarised ? red : green}</p>
+      {blocks.length > 0
+        ? <p className="pb-4 pt-8 font-normal text-xl text-gray-700 dark:text-gray-400">Code blocks that look similar: </p>
+        : null
+      }
+      <div className="flex flex-col gap-6">
+        {blocks.map(b =>
+          <div className="flex flex-col justify-center gap-4">
+            <p className="font-normal text-xl text-gray-700 dark:text-gray-400">{`Similarity: ${Math.round(b[2])}%`}</p>
+            <CodeBlock path={src} code={b[0]} />
+            <CodeBlock path={cmp} code={b[1]} />
+          </div>)}
+      </div>
+    </div>
+  )
 }
