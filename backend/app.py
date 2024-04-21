@@ -1,4 +1,5 @@
 import os
+import subprocess
 import zipfile
 
 from flask import Flask, jsonify, request
@@ -9,6 +10,11 @@ CORS(app)
 
 # Configure the maximum upload size (optional)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB limit
+
+
+def run_checker():
+    subprocess.run(['../checker/build/main'], cwd='../checker')
+    return
 
 
 @app.route("/upload", methods=["POST"])
@@ -25,17 +31,18 @@ def upload_file():
 
     if file and file.filename.endswith(".zip"):
         # Saving the file just to unzip it
-        filepath = "solutions.zip" 
+        filepath = "solutions.zip"
         file.save(filepath)
 
         # Unzip the file
         try:
             with zipfile.ZipFile(filepath, "r") as zip_ref:
                 # Extract all the contents into directory
-                extract_path = "../checker" 
+                extract_path = "../checker/solutions"
                 zip_ref.extractall(extract_path)
                 # Delete the .zip file since we no longer need it
                 os.remove(filepath)
+                run_checker()
             return (
                 jsonify(
                     {
