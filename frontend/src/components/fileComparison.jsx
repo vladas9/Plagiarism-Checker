@@ -23,7 +23,8 @@ export default function FileComparison({ plagiarised, src, cmp, blocks }) {
       <div className="flex flex-col gap-6">
         {blocks.map(b =>
           <div className="flex flex-col justify-center gap-4">
-            <p className="font-normal text-xl text-gray-700 dark:text-gray-400">{`Similarity: ${Math.round(b[2])}%`}</p>
+            <p className="font-normal text-xl text-gray-700 dark:text-gray-400">{`Text Similarity: ${Math.round(b[2])}%`}</p>
+            <p className="font-normal text-xl text-gray-700 dark:text-gray-400">{`AST Similarity: ${Math.round(b[3])}%`}</p>
             <CodeBlock path={src} code={b[0]} />
             <CodeBlock path={cmp} code={b[1]} />
           </div>)}

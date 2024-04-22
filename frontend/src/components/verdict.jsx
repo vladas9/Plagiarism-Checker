@@ -5,6 +5,7 @@ import { InputText } from 'primereact/inputtext';
 import Swal from 'sweetalert2';
 import FileComparison from './fileComparison';
 import withReactContent from 'sweetalert2-react-content'
+import { vs } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 const MySwal = withReactContent(Swal);
 
@@ -48,53 +49,67 @@ export default function UnstyledDemo(props) {
     const src_file = columnHeaders.current[x];
     const cmp_file = rowHeaders.current[y];
     const val = data.current[x][y];
-    const urls = [src_file + ".json", cmp_file + ".json", `${src_file}_vs_${cmp_file}.csv`];
+    const vs_file = `${src_file}_vs_${cmp_file}.csv`
+    const urls = [src_file + ".json", cmp_file + ".json", vs_file, `AST_${vs_file}`];
     Promise.all(urls.map(u => fetch(u)))
       .then(res =>
-        Promise.all([res[0].json(), res[1].json(), res[2].text()])
+        Promise.all([res[0].json(), res[1].json(), res[2].text(), res[3].text()])
       ).then(res => {
-        const [src_json, cmp_json, csv] = res;
+        const [src_json, cmp_json, csv, ast_csv] = res;
         console.log("src_json", src_json);
         console.log("cmp_json", cmp_json);
-        Papa.parse(csv, {
+        console.log("ast_csv", ast_csv);
+        Papa.parse(ast_csv, {
           download: true,
           delimiter: ',',
-          complete: (res, file) => {
-            console.log("completed parsing");
-            console.log("file", file);
-            const lines = file.trim().split('\n');
+          complete: (_, ast_file) => {
+            Papa.parse(csv, {
+              download: true,
+              delimiter: ',',
+              complete: (res, file) => {
+                console.log("completed parsing");
+                console.log("file", file);
+                console.log("ast_file", ast_file);
+                const lines = file.trim().split('\n');
+    
+                const srcBlocks = lines[0].split(',').slice(1);
+                console.log("srcBlocks", srcBlocks);
+                const cmpBlocks = lines.slice(1).map(line => line.split(',')[0]);
+                console.log("cmpBlocks", cmpBlocks);
 
-            const srcBlocks = lines[0].split(',').slice(1);
-            console.log("srcBlocks", srcBlocks);
-            const cmpBlocks = lines.slice(1).map(line => line.split(',')[0]);
-            console.log("cmpBlocks", cmpBlocks);
-
-            const susBlocks = [];
-            const matrix = lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(100 - v * 100)));
-            console.log("matrix", matrix);
-            for (let i = 0; i < matrix.length; i++) {
-              for (let j = 0; j < matrix[0].length; j++) {
-                console.log("matrix[i][j]", i, j, matrix[i][j]);
-                console.log("threshold", threshold);
-                if (matrix[i][j] > threshold.current) {
-                  console.log("greater than threshold");
-                  susBlocks.push([src_json[j], cmp_json[i], matrix[i][j]]);
+                const ast_lines = ast_file.trim().split('\n');
+                const ast_matrix = ast_lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(100 - v * 100)));
+    
+                const susBlocks = [];
+                const matrix = lines.slice(1).map(line => line.split(',').slice(1).map(v => parseFloat(100 - v * 100)));
+                console.log("matrix", matrix);
+                console.log("ast_matrix", ast_matrix)
+                for (let i = 0; i < matrix.length; i++) {
+                  for (let j = 0; j < matrix[0].length; j++) {
+                    console.log("matrix[i][j]", i, j, matrix[i][j]);
+                    console.log("threshold", threshold);
+                    if (matrix[i][j] > threshold.current) {
+                      console.log("greater than threshold");
+                      susBlocks.push([src_json[j], cmp_json[i], matrix[i][j], ast_matrix[i][j]]);
+                    }
+                  }
                 }
+    
+                console.log("susBlocks", susBlocks);
+    
+                const rootElement = document.documentElement
+                MySwal.fire({
+                  title: <p>{`${src_file} & ${cmp_file}`}</p>,
+                  width: "800px",
+                  html: showFile(val, src_file, cmp_file, susBlocks),
+                  color: rootElement.classList.contains("dark") ? "#9CA3AF" : "#545454",
+                  background: rootElement.classList.contains("dark") ? "#1F2937" : "white",
+                })
               }
-            }
-
-            console.log("susBlocks", susBlocks);
-
-            const rootElement = document.documentElement
-            MySwal.fire({
-              title: <p>{`${src_file} & ${cmp_file}`}</p>,
-              width: "800px",
-              html: showFile(val, src_file, cmp_file, susBlocks),
-              color: rootElement.classList.contains("dark") ? "#9CA3AF" : "#545454",
-              background: rootElement.classList.contains("dark") ? "#1F2937" : "white",
             })
           }
         })
+        
       });
 
   }
