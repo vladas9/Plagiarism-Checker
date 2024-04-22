@@ -138,10 +138,14 @@ void symmDB(BuffDB *db) {
     exit(1);
   }
   for (int i = 0; i < db->buffs1->len; i++) {
-    for (int j = i + 1; j < db->buffs1->len; j++) {
-      float avg = (db->dists[i][j] + db->dists[j][i]) / 2.0;
-      db->dists[i][j] = avg;
-      db->dists[j][i] = avg;
+    for (int j = i; j < db->buffs1->len; j++) {
+      if (i == j) {
+        db->dists[i][j] = 0;
+      } else {
+        float avg = (db->dists[i][j] + db->dists[j][i]) / 2.0;
+        db->dists[i][j] = avg;
+        db->dists[j][i] = avg;
+      }
     }
   }
 }
