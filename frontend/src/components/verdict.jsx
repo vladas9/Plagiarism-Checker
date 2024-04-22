@@ -9,8 +9,22 @@ import { vs } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 const MySwal = withReactContent(Swal);
 
+// function getMax(a) {
+//   return Math.max(...a.map(e => Array.isArray(e) ? getMax(e) : e));
+// }
+
 function getMax(a) {
-  return Math.max(...a.map(e => Array.isArray(e) ? getMax(e) : e));
+  return Math.max(
+    ...a.map(e => {
+      if (Array.isArray(e)) {
+        return getMax(e);
+      } else if (typeof e === 'number' && e < 100) {
+        return e;
+      } else {
+        return -Infinity; // Ignoring numbers 100 or bigger
+      }
+    })
+  );
 }
 
 function getAverage(arr) {
