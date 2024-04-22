@@ -26,6 +26,12 @@ typedef struct {
   float **dists;
 } BuffDB;
 
+typedef struct {
+  BuffDB *allFiles;
+  BuffList *txtBlocks;
+  BuffList *astBlocks;
+} GlobalData;
+
 BuffList *crawlDir(char *txt);
 Buff *makeBuff(char *input, const char *name);
 Buff *makeZBuff(Buff *inputBuff);

@@ -4,6 +4,6 @@
 #include "buff.h"
 #include <clang-c/Index.h>
 
-BuffList *parseCodeTxt(const char *filename);
+BuffList *parseCodeTxt(const char *filename, int parseType);
 
 #endif

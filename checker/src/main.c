@@ -22,43 +22,65 @@ int main(int argc, char *argv[]) {
     fclose(fd_db);
   }
 
-  for (int i = 0; i < db->buffs1->len; i++) {
+  // printf("filename: %s\n", progs->list[0]->name);
+  // BuffList *test = parseCodeTxt(progs->list[0]->name, 1);
+  // printf("%s\n", test->list[0]->dat);
+  // return 0;
+
+  for (int i = 0; i < progs->len; i++) {
     char json_filename[256];
     sprintf(json_filename, "./tmp/%s.json",
-            basename(strdup(db->buffs1->list[i]->name)));
+            basename(strdup(progs->list[i]->name)));
 
     FILE *fd = fopen(json_filename, "w");
     if (fd) {
-      BuffList *blocks = parseCodeTxt(db->buffs1->list[i]->name);
+      BuffList *blocks = parseCodeTxt(progs->list[i]->name, 0);
       writeList(fd, blocks);
       printf("created: %s\n", json_filename);
       fclose(fd);
     }
   }
 
-  for (int i = 0; i < db->buffs2->len; i++) {
-    char json_filename[256];
-    sprintf(json_filename, "./tmp/%s.json",
-            basename(strdup(db->buffs2->list[i]->name)));
-    FILE *fd = fopen(json_filename, "w");
-    if (fd) {
-      BuffList *blocks = parseCodeTxt(db->buffs2->list[i]->name);
-      writeList(fd, blocks);
-      printf("created: %s\n", json_filename);
-      fclose(fd);
-    }
-  }
+  // for (int i = 0; i < db->buffs2->len; i++) {
+  //   char json_filename[256];
+  //   sprintf(json_filename, "./tmp/%s.json",
+  //           basename(strdup(db->buffs2->list[i]->name)));
+  //   FILE *fd = fopen(json_filename, "w");
+  //   if (fd) {
+  //     BuffList *blocks = parseCodeTxt(db->buffs2->list[i]->name, 0);
+  //     writeList(fd, blocks);
+  //     printf("created: %s\n", json_filename);
+  //     fclose(fd);
+  //   }
+  // }
 
-  for (int i = 0; i < db->buffs1->len; i++) {
-    for (int j = 0; j < db->buffs2->len; j++) {
+  for (int i = 0; i < progs->len; i++) {
+    for (int j = 0; j < progs->len; j++) {
       char csv_filename[256];
-      sprintf(csv_filename, "./tmp/%s_vs_%s.csv",
-              basename(strdup(db->buffs1->list[i]->name)),
-              basename(strdup(db->buffs2->list[j]->name)));
+      sprintf(csv_filename, "./tmp/AST_%s_vs_%s.csv",
+              basename(strdup(progs->list[i]->name)),
+              basename(strdup(progs->list[j]->name)));
       FILE *fd_blocks_db = fopen(csv_filename, "w");
       if (fd_blocks_db) {
-        BuffDB *blocksDB = makeDB(parseCodeTxt(db->buffs1->list[i]->name),
-                                  parseCodeTxt(db->buffs2->list[j]->name));
+        BuffDB *blocksDB = makeDB(parseCodeTxt(progs->list[i]->name, 1),
+                                  parseCodeTxt(progs->list[j]->name, 1));
+        writeDB(fd_blocks_db, blocksDB);
+        printf("created: %s\n", csv_filename);
+        fclose(fd_blocks_db);
+      }
+    }
+  }
+
+  for (int i = 0; i < progs->len; i++) {
+    for (int j = 0; j < progs->len; j++) {
+      char csv_filename[256];
+      sprintf(csv_filename, "./tmp/%s_vs_%s.csv",
+              basename(strdup(progs->list[i]->name)),
+              basename(strdup(progs->list[j]->name)));
+      FILE *fd_blocks_db = fopen(csv_filename, "w");
+      if (fd_blocks_db) {
+        BuffDB *blocksDB = makeDB(parseCodeTxt(progs->list[i]->name, 0),
+                                  parseCodeTxt(progs->list[j]->name, 0));
         writeDB(fd_blocks_db, blocksDB);
         printf("created: %s\n", csv_filename);
         fclose(fd_blocks_db);

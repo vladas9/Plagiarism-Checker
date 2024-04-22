@@ -1,4 +1,0 @@
-[
-"struct Avocado {\n  char* Obama;\n  float idoknowwhatsgoingon;\n}",
-"int main()\n{\n    int t=0,i=0,n=0;\n    scanf(\"%d\",&t);\n    while(t--)\n    {\n        scanf(\"%d\",&n);\n        if(n<=6||n==9)\n        {\n            printf(\"NO\\n\");\n        }\n        else\n        {\n            printf(\"YES\\n%d %d %d\\n\",1,2+2*(n%3==0),n-3-2*(n%3==0));\n        }\n    }\n    return 0;\n}"
-]

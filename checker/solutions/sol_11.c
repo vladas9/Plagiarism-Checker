@@ -1,6 +1,5 @@
 #include "../include/parser.h"
 #include <clang-c/CXString.h>
-#include <clang-c/Index.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,12 +9,9 @@ typedef struct {
   BuffList *buffList;
   const char *fileName;
   unsigned int treeLevel;
-  char *currData;
 } VisitorData;
 
 void addSnippet(BuffList *bl, char *code, const char *name) {
-  if (strlen(code) == 0)
-    return;
   Buff *buff = makeBuff(code, name);
   pushBuff(bl, buff);
 }
@@ -33,10 +29,6 @@ int cursorIsValid(enum CXCursorKind cursorKind) {
 
 enum CXChildVisitResult visitorTxt(CXCursor cursor, CXCursor parent,
                                    CXClientData client_data) {
-  CXSourceLocation location = clang_getCursorLocation(cursor);
-  if (clang_Location_isFromMainFile(location) == 0)
-    return CXChildVisit_Continue;
-
   enum CXCursorKind cursorKind = clang_getCursorKind(cursor);
 
   if (cursorIsValid(cursorKind)) {
@@ -82,45 +74,38 @@ enum CXChildVisitResult visitorTxt(CXCursor cursor, CXCursor parent,
   return CXChildVisit_Continue;
 }
 
+const char *getCursorKindName(enum CXCursorKind cursorKind) {
+  CXString kindName = clang_getCursorKindSpelling(cursorKind);
+  const char *result = clang_getCString(kindName);
+
+  clang_disposeString(kindName);
+  return result;
+}
+
 enum CXChildVisitResult visitorAstBlock(CXCursor cursor, CXCursor parent,
                                         CXClientData clientData) {
   CXSourceLocation location = clang_getCursorLocation(cursor);
   if (clang_Location_isFromMainFile(location) == 0)
     return CXChildVisit_Continue;
 
-  VisitorData *visitorData = (VisitorData *)clientData;
-
   enum CXCursorKind cursorKind = clang_getCursorKind(cursor);
-  CXString cursorKindSpelling = clang_getCursorKindSpelling(cursorKind);
-  const char *cursorKindSpellingStr = clang_getCString(cursorKindSpelling);
+
+  VisitorData *visitorData = (VisitorData *)clientData;
 
   CXString cursorSpelling = clang_getCursorSpelling(cursor);
   const char *cursorSpellingStr = clang_getCString(cursorSpelling);
 
-  size_t new_size =
-      strlen(visitorData->currData) + strlen(cursorKindSpellingStr) +
-      (cursorSpellingStr ? strlen(cursorSpellingStr) : strlen("Unknown")) +
-      visitorData->treeLevel + 6;
-
-  visitorData->currData = realloc(visitorData->currData, new_size);
-
-  if (visitorData->currData == NULL) {
-    fprintf(stderr, "Memory allocation failed\n");
-    return CXChildVisit_Break;
-  }
-
-  // Append cursor information to the string
   for (int z = 0; z < visitorData->treeLevel; z++)
-    strcat(visitorData->currData, "-");
-  sprintf(visitorData->currData + strlen(visitorData->currData), "%s: %s\n",
-          strdup(cursorKindSpellingStr),
-          cursorSpellingStr ? strdup(cursorSpellingStr) : "Unknown");
+    printf("-");
+  printf("%s: %s\n", getCursorKindName(cursorKind),
+         cursorSpellingStr ? cursorSpellingStr : "Unknown");
 
   clang_disposeString(cursorSpelling);
 
   visitorData->treeLevel++;
   clang_visitChildren(cursor, visitorAstBlock, clientData);
   visitorData->treeLevel--;
+
   return CXChildVisit_Continue;
 }
 
@@ -139,23 +124,17 @@ enum CXChildVisitResult visitorAst(CXCursor cursor, CXCursor parent,
       CXSourceRange range = clang_getCursorExtent(bodyCursor);
       CXSourceLocation startLoc = clang_getRangeStart(range);
       CXSourceLocation endLoc = clang_getRangeEnd(range);
-      unsigned int startOffset; //, endOffset;
+      unsigned int startOffset, endOffset;
       CXFile file;
       clang_getExpansionLocation(startLoc, &file, NULL, NULL, &startOffset);
-      // clang_getExpansionLocation(endLoc, NULL, NULL, NULL, &endOffset);
+      clang_getExpansionLocation(endLoc, NULL, NULL, NULL, &endOffset);
 
       CXString cxFileName = clang_getFileName(file);
       const char *fileName = clang_getCString(cxFileName);
 
       if (strcmp(fileName, vData->fileName) == 0) {
-        if (strlen(vData->currData) != 0)
-          vData->currData = strdup("");
-
+        printf("block: \n");
         visitorAstBlock(cursor, parent, client_data);
-        addSnippet(vData->buffList, vData->currData, clang_getCString(name));
-        // printf("block: \n");
-        // printf("%s\n", vData->currData);
-        //  vData->currData = strdup("");
       }
       clang_disposeString(cxFileName);
       clang_disposeString(name);
@@ -170,7 +149,6 @@ BuffList *parseCodeTxt(const char *filename, int ViewAst) {
   vData.treeLevel = 0;
   vData.fileName = filename;
   vData.buffList = makeBuffList();
-  vData.currData = strdup("");
 
   CXIndex index = clang_createIndex(0, 0);
   CXTranslationUnit unit = clang_parseTranslationUnit(

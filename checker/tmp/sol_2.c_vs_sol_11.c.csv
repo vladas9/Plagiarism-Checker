@@ -1,0 +1,9 @@
+-------,main
+VisitorData,0.866667
+addSnippet,0.842424
+cursorIsValid,0.806061
+visitorTxt,0.922018
+getCursorKindName,0.806061
+visitorAstBlock,0.883289
+visitorAst,0.897959
+parseCodeTxt,0.926471
