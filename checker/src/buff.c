@@ -86,6 +86,8 @@ Buff *minBuff(Buff *x, Buff *y) {
 }
 
 float normCompDist(Buff *x, Buff *y) {
+  if (strcmp(x->dat, y->dat) == 0)
+    return 0;
   Buff *Cx = makeZBuff(x);
   Buff *Cy = makeZBuff(y);
 
@@ -138,7 +140,7 @@ void symmDB(BuffDB *db) {
     exit(1);
   }
   for (int i = 0; i < db->buffs1->len; i++) {
-    for (int j = i; j < db->buffs1->len; j++) {
+    for (int j = i + 1; j < db->buffs1->len; j++) {
       if (i == j) {
         db->dists[i][j] = 0;
       } else {
